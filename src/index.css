@@ -126,10 +126,11 @@ input:focus-visible {
   inset: -8%;
   z-index: 3;
   pointer-events: none;
-  opacity: 0.07;
+  opacity: 0.045;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>");
   background-size: 180px 180px;
-  animation: grain 0.8s steps(5) infinite;
+  /* Animated feTurbulence is surprisingly expensive on older Intel Macs. */
+  animation: none;
 }
 
 .is-touch .fx-scan,

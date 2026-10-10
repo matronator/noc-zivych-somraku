@@ -13,6 +13,7 @@ import {
 const TAU = Math.PI * 2;
 const CHUNK_H = 320;
 const PAD = 2;
+const MAX_CHUNK_RES = 1.75;
 export const FONT = '"Barlow Condensed", "Arial Narrow", "Roboto Condensed", Arial, sans-serif';
 
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
@@ -140,6 +141,9 @@ export class Renderer {
   private vignette: HTMLCanvasElement;
   private redVignette: HTMLCanvasElement;
   private guards: CircleObstacle[];
+  private lightBands = new Map<number, LightSource[]>();
+  private visibleLightList: LightSource[] = [];
+  private maxLightRadius = 0;
 
   constructor(ctx: CanvasRenderingContext2D, level: Level) {
     this.ctx = ctx;
@@ -173,6 +177,16 @@ export class Renderer {
       [1, "rgba(215,25,30,0.78)"],
     ]);
     this.guards = level.obstacles.filter((o): o is CircleObstacle => o.shape === "circle" && o.type === "guard");
+
+    // Lights are static. Bucket them by their center's vertical chunk so the
+    // frame loop only visits lights that could contribute to the viewport.
+    for (const light of level.lights) {
+      this.maxLightRadius = Math.max(this.maxLightRadius, light.r);
+      const i = Math.floor(light.y / CHUNK_H);
+      const bucket = this.lightBands.get(i);
+      if (bucket) bucket.push(light);
+      else this.lightBands.set(i, [light]);
+    }
   }
 
   resize(width: number, height: number, dpr: number) {
@@ -186,7 +200,7 @@ export class Renderer {
       this.lightCanvas.width = lw;
       this.lightCanvas.height = lh;
     }
-    const res = Math.min(2.5, this.scale * dpr * 1.05);
+    const res = Math.min(MAX_CHUNK_RES, this.scale * dpr * 1.05);
     const viewW = this.width / this.scale;
     const need = Math.max(0, (viewW - WORLD_W) / 2);
     const margin = Math.min(500, Math.ceil((need + (need > 0 ? 60 : 30)) / 20) * 20);
@@ -258,6 +272,19 @@ export class Renderer {
     }
   }
 
+  private visibleLights(y0: number, y1: number) {
+    const i0 = Math.floor((y0 - this.maxLightRadius) / CHUNK_H);
+    const i1 = Math.floor((y1 + this.maxLightRadius) / CHUNK_H);
+    const out = this.visibleLightList;
+    out.length = 0;
+    for (let i = i0; i <= i1; i += 1) {
+      const bucket = this.lightBands.get(i);
+      if (!bucket) continue;
+      for (const light of bucket) out.push(light);
+    }
+    return out;
+  }
+
   render(game: GameState, phase: Phase, now: number) {
     const ctx = this.ctx;
     const W = this.width;
@@ -272,6 +299,7 @@ export class Renderer {
     const vy0 = cam.y;
     const vx1 = cam.x + W / s;
     const vy1 = cam.y + H / s;
+    const visibleLights = this.visibleLights(vy0, vy1);
     const applyWorld = (g: CanvasRenderingContext2D) => {
       g.translate(W / 2, H / 2);
       g.rotate(rot);
@@ -292,7 +320,8 @@ export class Renderer {
     drawGroundFx(ctx, game, now, vx0, vy0, vx1, vy1);
     drawPickups(ctx, game, now, vy0, vy1);
     drawActors(ctx, game, now, this.guards, vx0 - 60, vy0 - 90, vx1 + 60, vy1 + 90);
-    drawParticles(ctx, game.particles, false, vx0, vy0, vx1, vy1);
+    glowParticles.length = 0;
+    drawParticles(ctx, game.particles, false, vx0, vy0, vx1, vy1, glowParticles);
     ctx.restore();
 
     // Darkness mask with light holes, rendered at low resolution.
@@ -310,7 +339,7 @@ export class Renderer {
       lc.globalCompositeOperation = "destination-out";
       lc.setTransform(m, 0, 0, m, 0, 0);
       applyWorld(lc);
-      for (const light of this.level.lights) {
+      for (const light of visibleLights) {
         if (light.x + light.r < vx0 || light.x - light.r > vx1 || light.y + light.r < vy0 || light.y - light.r > vy1) continue;
         const a = lightLevel(light, now);
         if (a <= 0.02) continue;
@@ -350,7 +379,7 @@ export class Renderer {
     ctx.save();
     applyWorld(ctx);
     ctx.globalCompositeOperation = "lighter";
-    for (const light of this.level.lights) {
+    for (const light of visibleLights) {
       if (light.tint === "none") continue;
       const r = light.r * 0.8;
       if (light.x + r < vx0 || light.x - r > vx1 || light.y + r < vy0 || light.y - r > vy1) continue;
@@ -361,7 +390,7 @@ export class Renderer {
     }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
-    drawGlowLayer(ctx, game, this.level, now, vx0, vy0, vx1, vy1);
+    drawGlowLayer(ctx, game, this.level.goals, visibleLights, now, vx0, vy0, vx1, vy1);
     ctx.restore();
 
     ctx.save();
@@ -756,6 +785,7 @@ const BUSH_PAL = [
   ["#27452f", "#33573a", "#476e45", "#628a55"],
 ];
 const PRODUCTS = ["#e05a47", "#f2c14e", "#5fb0e8", "#8bd17c", "#f29bd0", "#f4f1e6", "#b58bf0"];
+const glowParticles: Particle[] = [];
 
 function drawObstacle(g: CanvasRenderingContext2D, o: Obstacle, level: Level) {
   g.textAlign = "center";
@@ -1677,13 +1707,18 @@ function drawParticles(
   y0: number,
   x1: number,
   y1: number,
+  collectGlow?: Particle[],
 ) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (let i = 0; i < list.length; i += 1) {
     const q = list[i];
-    if (q.glow !== glowPass) continue;
     if (q.x < x0 - 30 || q.x > x1 + 30 || q.y < y0 - 60 || q.y > y1 + 60) continue;
+    if (q.glow) {
+      if (!glowPass) collectGlow?.push(q);
+      continue;
+    }
+    if (glowPass) continue;
     const u = q.life / q.max;
     const y = q.y - q.z;
     switch (q.kind) {
@@ -1777,7 +1812,8 @@ function drawParticles(
 function drawGlowLayer(
   ctx: CanvasRenderingContext2D,
   game: GameState,
-  level: Level,
+  goals: Level["goals"],
+  lights: LightSource[],
   now: number,
   x0: number,
   y0: number,
@@ -1785,7 +1821,7 @@ function drawGlowLayer(
   y1: number,
 ) {
   ctx.globalCompositeOperation = "lighter";
-  for (const light of level.lights) {
+  for (const light of lights) {
     if (!light.bulb || light.x < x0 - 10 || light.x > x1 + 10 || light.y < y0 - 10 || light.y > y1 + 10) continue;
     const a = lightLevel(light, now);
     ctx.fillStyle = light.tint === "cool" ? "#cfe8ff" : "#ffe2a8";
@@ -1825,7 +1861,7 @@ function drawGlowLayer(
   }
 
   if (y0 < 320) {
-    for (const goal of level.goals) {
+    for (const goal of goals) {
       const cx = goal.x + goal.w / 2;
       const pulse = 0.55 + Math.sin(now * 5) * 0.3;
       ctx.globalAlpha = pulse * 0.8;

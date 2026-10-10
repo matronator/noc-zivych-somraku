@@ -121,6 +121,7 @@ export interface Beggar {
   lureId: number;
   horde: boolean;
   stinkCD: number;
+  sightCD: number;
 }
 
 export interface Pickup {
@@ -599,6 +600,7 @@ function spawnBeggar(
     lureId: -1,
     horde: !!opts.horde,
     stinkCD: 1.5,
+    sightCD: 0,
   };
   if (kind === "boss") b.facing = Math.PI / 2;
   game.beggars.push(b);
@@ -1211,6 +1213,7 @@ function updateBeggars(game: GameState, dt: number, refY: number) {
     b.bubbleT = Math.max(0, b.bubbleT - dt);
     b.cd = Math.max(0, b.cd - dt);
     b.stinkCD = Math.max(0, b.stinkCD - dt);
+    b.sightCD = Math.max(0, b.sightCD - dt);
     const dx = p.x - b.x;
     const dy = p.y - b.y;
     const d = Math.hypot(dx, dy) || 0.001;
@@ -1264,8 +1267,13 @@ function updateBeggars(game: GameState, dt: number, refY: number) {
           wantY = Math.sin(b.wanderA);
           speed = b.speed * 0.4;
         }
-        if (canAggro && !safe && d < aggroRange(b) && (d < 90 || b.horde || lineClear(level, b.x, b.y, p.x, p.y))) {
-          aggro(game, b);
+        if (canAggro && !safe && d < aggroRange(b)) {
+          let hasSight = d < 90 || b.horde;
+          if (!hasSight && b.sightCD <= 0) {
+            b.sightCD = 0.12;
+            hasSight = lineClear(level, b.x, b.y, p.x, p.y);
+          }
+          if (hasSight) aggro(game, b);
         }
         break;
       case "chase": {
@@ -1296,7 +1304,15 @@ function updateBeggars(game: GameState, dt: number, refY: number) {
         wantY = tmpDir.y;
         const shamble = b.kind === "bedak" || b.kind === "smrad" ? 0.72 + 0.28 * Math.sin(b.anim * 5.2 + b.id) : 1;
         speed = b.kind === "boss" ? Math.min(124, b.speed + b.chaseT * 3.5) : b.speed * shamble;
-        if (b.kind === "teplaky" && b.cd <= 0 && d < 230 && d > 56 && lineClear(level, b.x, b.y, p.x, p.y)) {
+        const needsSight =
+          (b.kind === "teplaky" && b.cd <= 0 && d < 230 && d > 56) ||
+          (b.kind === "boss" && b.cd <= 0 && d < 270 && d > 80);
+        let hasSight = false;
+        if (needsSight && b.sightCD <= 0) {
+          b.sightCD = 0.1;
+          hasSight = lineClear(level, b.x, b.y, p.x, p.y);
+        }
+        if (b.kind === "teplaky" && b.cd <= 0 && d < 230 && d > 56 && hasSight) {
           b.state = "windup";
           b.t = 0.55;
           b.lungeX = dx / d;
@@ -1304,7 +1320,7 @@ function updateBeggars(game: GameState, dt: number, refY: number) {
           say(b, pick(LINES_TEPLAKY), 1.2);
           game.events.push("alert");
           hintOnce(game, "lunge", "Teplákář se rozbíhá — uhni do strany!");
-        } else if (b.kind === "boss" && b.cd <= 0 && d < 270 && d > 80 && lineClear(level, b.x, b.y, p.x, p.y)) {
+        } else if (b.kind === "boss" && b.cd <= 0 && d < 270 && d > 80 && hasSight) {
           b.state = "windup";
           b.t = 0.8;
           b.lungeX = dx / d;
@@ -1472,6 +1488,7 @@ function separateBeggars(game: GameState, refY: number) {
     for (let j = i + 1; j < n; j += 1) {
       const b = list[j];
       if (b.state === "sleep") continue;
+      if (Math.abs(b.y - refY) > 900) continue;
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const min = a.r + b.r;

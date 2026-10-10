@@ -67,10 +67,15 @@ function GameCanvas({ gameRef, phaseRef, actionsRef, sfx, onEnd, onHud, onFrame 
     let raf = 0;
     let last = 0;
     let lastHud = 0;
+    let lastUiFrame = 0;
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // The game does a lot of 2D canvas work. Rendering a Retina Mac at 2x
+      // turns a 1280×800 viewport into a 2560×1600 canvas, i.e. 4× as many
+      // pixels for every frame. A 1.25x cap keeps the image reasonably sharp
+      // while cutting a large amount of raster work on older Intel Macs.
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
       const w = Math.max(1, Math.round(rect.width * dpr));
       const h = Math.max(1, Math.round(rect.height * dpr));
       if (canvas.width !== w || canvas.height !== h) {
@@ -128,7 +133,12 @@ function GameCanvas({ gameRef, phaseRef, actionsRef, sfx, onEnd, onHud, onFrame 
         game.events.length = 0;
       }
       renderer.render(game, phaseRef.current, now / 1000);
-      callbacks.current.onFrame(game);
+      // Keep the Canvas loop uncapped, but don't force DOM/CSS writes at 60 Hz
+      // for UI-only cooldown indicators.
+      if (now - lastUiFrame >= 33) {
+        lastUiFrame = now;
+        callbacks.current.onFrame(game);
+      }
       if (now - lastHud > 80) {
         lastHud = now;
         callbacks.current.onHud(hudSnapshot(game));
