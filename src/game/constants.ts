@@ -26,7 +26,7 @@ export const START_X = 410;
 export const START_Y = 5330;
 export const GOAL_Y = 150;
 
-export type BeggarKind = "bedak" | "teplaky" | "smrad" | "boss";
+export type BeggarKind = "bezdak" | "teplaky" | "smrad" | "boss";
 export type Demand = "cash" | "cig";
 export type PickupKind = "coin" | "bill" | "pack" | "coffee" | "phones";
 export type ZoneId = "platform" | "tunnel" | "hall" | "plaza" | "park";

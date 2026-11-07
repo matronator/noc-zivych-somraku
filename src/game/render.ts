@@ -1505,7 +1505,7 @@ function drawBeggar(ctx: CanvasRenderingContext2D, b: Beggar, now: number) {
   const stride = moving
     ? Math.sin(b.anim * (b.state === "lunge" ? 22 : b.kind === "boss" ? 6 : 8)) * (b.kind === "boss" ? 7 : 5)
     : 0;
-  if ((b.kind === "bedak" || b.kind === "smrad") && b.state === "chase") ctx.rotate(Math.sin(b.anim * 3.4 + b.id) * 0.14);
+  if ((b.kind === "bezdak" || b.kind === "smrad") && b.state === "chase") ctx.rotate(Math.sin(b.anim * 3.4 + b.id) * 0.14);
 
   ctx.fillStyle = "#2a241e";
   oval(ctx, -r * 0.42, -stride + 1, r * 0.26, r * 0.4);
@@ -1523,7 +1523,7 @@ function drawBeggar(ctx: CanvasRenderingContext2D, b: Beggar, now: number) {
       ctx.fillStyle = b.skin;
       disc(ctx, side * r * 0.62, -r * 1.5 + sway, r * 0.23);
     }
-    if (b.kind === "bedak") {
+    if (b.kind === "bezdak") {
       ctx.fillStyle = "#f2ede0";
       disc(ctx, r * 0.62, -r * 1.78 + stride * 0.3, r * 0.27);
       ctx.fillStyle = "#8a5a36";

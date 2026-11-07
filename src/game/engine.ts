@@ -530,18 +530,22 @@ function spawnBeggar(
   const r = kind === "boss" ? 27 : kind === "smrad" ? 18 : kind === "teplaky" ? 12 : 13;
   let demand: Demand = "cash";
   let amount = 20;
-  if (kind === "bedak" && Math.random() < 0.38) {
-    demand = "cig";
-    amount = 1;
-  } else if (kind === "teplaky" || kind === "boss") {
+  if (kind === "bezdak") {
+    demand = Math.random() < 0.5 ? "cash" : "cig";
+    amount = demand === "cash" ? 20 : 1;
+  } else if (kind === "teplaky") {
+    demand = "cash";
     amount = 50;
   } else if (kind === "smrad") {
     demand = "cig";
     amount = 2;
+  } else if (kind === "boss") {
+    demand = Math.random() < 0.5 ? "cash" : "cig";
+    amount = demand === "cash" ? 50 : 3;
   }
   const prog = progress01(game);
   const speed =
-    kind === "bedak"
+    kind === "bezdak"
       ? opts.horde
         ? 78 + Math.random() * 16
         : (48 + Math.random() * 18) * (1 + prog * 0.22)
@@ -590,7 +594,7 @@ function spawnBeggar(
             ? "#3a2f2b"
             : pick(COATS),
     hat: kind === "teplaky" ? "#1b1b1f" : kind === "boss" ? "#26211e" : pick(HATS),
-    hatType: kind === "bedak" ? (Math.random() < 0.7 ? 0 : 1) : kind === "teplaky" ? 2 : 1,
+    hatType: kind === "bezdak" ? (Math.random() < 0.7 ? 0 : 1) : kind === "teplaky" ? 2 : 1,
     skin: pick(SKINS),
     beard: kind !== "teplaky" && Math.random() < 0.75,
     alpha: 1,
@@ -1302,7 +1306,7 @@ function updateBeggars(game: GameState, dt: number, refY: number) {
         }
         wantX = tmpDir.x;
         wantY = tmpDir.y;
-        const shamble = b.kind === "bedak" || b.kind === "smrad" ? 0.72 + 0.28 * Math.sin(b.anim * 5.2 + b.id) : 1;
+        const shamble = b.kind === "bezdak" || b.kind === "smrad" ? 0.72 + 0.28 * Math.sin(b.anim * 5.2 + b.id) : 1;
         speed = b.kind === "boss" ? Math.min(124, b.speed + b.chaseT * 3.5) : b.speed * shamble;
         const needsSight =
           (b.kind === "teplaky" && b.cd <= 0 && d < 230 && d > 56) ||
@@ -1319,7 +1323,7 @@ function updateBeggars(game: GameState, dt: number, refY: number) {
           b.lungeY = dy / d;
           say(b, pick(LINES_TEPLAKY), 1.2);
           game.events.push("alert");
-          hintOnce(game, "lunge", "Teplákář se rozbíhá — uhni do strany!");
+          hintOnce(game, "lunge", "Úkáčko se rozbíhá — uhni do strany!");
         } else if (b.kind === "boss" && b.cd <= 0 && d < 270 && d > 80 && hasSight) {
           b.state = "windup";
           b.t = 0.8;
@@ -1673,7 +1677,7 @@ function updateHorde(game: GameState, dt: number) {
   game.hordeQueue -= 1;
   const options = game.level.hordeSpawns.filter((s) => Math.hypot(s.x - p.x, s.y - p.y) > 200);
   const s = options.length ? pick(options) : pick(game.level.hordeSpawns);
-  const b = spawnBeggar(game, "bedak", s.x + (Math.random() - 0.5) * 40, s.y + (Math.random() - 0.5) * 40, { horde: true });
+  const b = spawnBeggar(game, "bezdak", s.x + (Math.random() - 0.5) * 40, s.y + (Math.random() - 0.5) * 40, { horde: true });
   b.state = "chase";
   b.alert = 0.6;
   burst(game, b.x, b.y, 6, { kind: "dust", colors: ["#b9b29f", "#8f8a7a"], speed: [30, 90], life: [0.4, 0.7], size: [5, 9] });
@@ -1703,7 +1707,7 @@ function updateSpawns(game: GameState, dt: number) {
       if (x > game.cam.x - 40 && x < game.cam.x + game.viewW + 40 && y > game.cam.y - 40 && y < game.cam.y + game.viewH + 40) continue;
       if (flowDistAt(game, x, y) >= FLOW_UNREACHED) continue;
       if (inSafeZone(game.level, x, y, 30)) continue;
-      const b = spawnBeggar(game, "bedak", x, y);
+      const b = spawnBeggar(game, "bezdak", x, y);
       if (flowDistAt(game, x, y) * CELL < 650) b.state = "chase";
       break;
     }

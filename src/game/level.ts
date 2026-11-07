@@ -695,26 +695,26 @@ export function planRun(level: Level, seed: number): RunPlan {
   const coin = () => (rng() < 0.3 ? 20 : 10);
 
   // Sherwood park — the first encounter is placed right on the main path.
-  beggars.push({ kind: "bedak", x: 448, y: 5065 });
+  beggars.push({ kind: "bezdak", x: 448, y: 5065 });
   const parkBenches = level.benches.filter((b) => b.y > 3450 && b.y < 5300);
   shuffle(parkBenches, rng);
   for (const bench of parkBenches.slice(0, 6)) {
     beggars.push({
-      kind: "bedak",
+      kind: "bezdak",
       x: bench.x + bench.w / 2,
       y: bench.y + bench.h / 2,
       sleep: true,
       lyingH: bench.w > bench.h,
     });
   }
-  for (let i = 0; i < 9; i += 1) add("bedak", 40, 780, 3480, 5060);
+  for (let i = 0; i < 9; i += 1) add("bezdak", 40, 780, 3480, 5060);
   add("teplaky", 150, 670, 4500, 4950, true);
   add("teplaky", 150, 670, 3550, 4050, true);
   add("smrad", 200, 620, 3650, 4250);
 
   // Forecourt
-  beggars.push({ kind: "bedak", x: 190, y: 3098 }, { kind: "bedak", x: 632, y: 3104 });
-  for (let i = 0; i < 3; i += 1) add("bedak", 40, 780, 3130, 3380);
+  beggars.push({ kind: "bezdak", x: 190, y: 3098 }, { kind: "bezdak", x: 632, y: 3104 });
+  for (let i = 0; i < 3; i += 1) add("bezdak", 40, 780, 3130, 3380);
   add("teplaky", 300, 700, 3150, 3380, true);
 
   // Main hall — the NONSTOP crowd, a stinker by the paid toilets.
@@ -725,17 +725,17 @@ export function planRun(level: Level, seed: number): RunPlan {
     [604, 2306],
     [610, 2366],
   ]) {
-    beggars.push({ kind: "bedak", x, y });
+    beggars.push({ kind: "bezdak", x, y });
   }
   beggars.push({ kind: "smrad", x: 182, y: 2318 });
-  for (let i = 0; i < 7; i += 1) add("bedak", 150, 670, 1720, 2960);
+  for (let i = 0; i < 7; i += 1) add("bezdak", 150, 670, 1720, 2960);
   add("teplaky", 150, 670, 1750, 2300, true);
   add("teplaky", 150, 670, 2500, 2950, true);
   add("smrad", 160, 660, 1760, 2150);
 
   // Underpass & platform
-  for (let i = 0; i < 5; i += 1) add("bedak", 250, 570, 700, 1540);
-  for (let i = 0; i < 3; i += 1) add("bedak", 40, 780, 210, 500);
+  for (let i = 0; i < 5; i += 1) add("bezdak", 250, 570, 700, 1540);
+  for (let i = 0; i < 3; i += 1) add("bezdak", 40, 780, 210, 500);
   beggars.push({ kind: "boss", x: 410, y: 250 });
 
   // Pickups

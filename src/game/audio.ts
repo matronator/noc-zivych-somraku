@@ -1,5 +1,13 @@
 import type { SfxName } from "./engine";
 
+const shoveAudioUrls = Object.values(
+  import.meta.glob<string>("../audio/shove/*.wav", {
+    eager: true,
+    query: "?url",
+    import: "default",
+  }),
+);
+
 const MASTER_VOLUME = 0.5;
 
 export class Sfx {
@@ -8,6 +16,8 @@ export class Sfx {
   private master: GainNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
   private last = new Map<SfxName, number>();
+  private shoveBuffers: AudioBuffer[] = [];
+  private shovePreload: Promise<void> | null = null;
 
   unlock() {
     if (!this.ctx) {
@@ -32,6 +42,30 @@ export class Sfx {
       for (let i = 0; i < len; i += 1) data[i] = Math.random() * 2 - 1;
     }
     if (this.ctx.state === "suspended") void this.ctx.resume();
+  }
+
+  preload() {
+    this.unlock();
+    const ctx = this.ctx;
+    if (!ctx || this.shoveBuffers.length || shoveAudioUrls.length === 0) return Promise.resolve();
+    if (this.shovePreload) return this.shovePreload;
+
+    this.shovePreload = Promise.all(
+      shoveAudioUrls.map(async (url) => {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return await ctx.decodeAudioData(await response.arrayBuffer());
+        } catch (error) {
+          console.error(`Failed to preload shove sound "${url}"`, error);
+          return null;
+        }
+      }),
+    ).then((buffers) => {
+      if (this.ctx === ctx) this.shoveBuffers = buffers.filter((buffer): buffer is AudioBuffer => buffer !== null);
+    });
+
+    return this.shovePreload;
   }
 
   setMuted(muted: boolean) {
@@ -132,6 +166,14 @@ export class Sfx {
     lfo.stop(t + dur + 0.05);
   }
 
+  private shove(volume = 1) {
+    this.noise(0.22, 0.35, 1400, 260);
+    const buffer = this.shoveBuffers[Math.floor(Math.random() * this.shoveBuffers.length)];
+    if (!buffer || !this.playWav(buffer, volume)) {
+      this.tone("square", 240, 110, 0.14, 0.09, 0, 1400);
+    }
+  }
+
   play(name: SfxName) {
     if (!this.ctx || this.muted) return;
     const now = this.ctx.currentTime;
@@ -141,12 +183,10 @@ export class Sfx {
     this.last.set(name, now);
     switch (name) {
       case "shove":
-        this.noise(0.22, 0.45, 1400, 260);
-        this.tone("square", 240, 110, 0.14, 0.09, 0, 1400);
+        this.shove(1);
         break;
       case "shoveHit":
-        this.noise(0.22, 0.45, 1400, 260);
-        this.tone("square", 240, 110, 0.14, 0.09, 0, 1400);
+        this.shove(1);
         this.tone("sine", 150, 50, 0.2, 0.42);
         this.noise(0.1, 0.3, 300, 100, "lowpass", 0.02);
         break;
@@ -218,5 +258,25 @@ export class Sfx {
         this.tone("square", 1000, 1000, 0.035, 0.05, 0, 4000);
         break;
     }
+  }
+
+  private playWav(buffer: AudioBuffer, volume = 1): boolean {
+    const ctx = this.ctx;
+    const master = this.master;
+
+    if (!ctx || !master) return false;
+
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+
+    source.buffer = buffer;
+    gain.gain.value = volume;
+
+    source.connect(gain);
+    gain.connect(master);
+
+    source.start();
+
+    return true;
   }
 }

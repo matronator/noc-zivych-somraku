@@ -34,7 +34,7 @@ interface ResultState extends RunSummary {
   name: string;
 }
 
-type BeggarAvatar = "bedak" | "teplaky" | "smrad" | "boss";
+type BeggarAvatar = "bezdak" | "teplaky" | "smrad" | "boss";
 
 function storageGet(key: string) {
   try {
@@ -119,7 +119,7 @@ function Avatar({ kind }: { kind: BeggarAvatar }) {
         <>
           <rect x={24 - r * 0.8} y="8" width="5" height="15" rx="2.5" fill={coat} opacity="0.85" />
           <rect x={24 + r * 0.8 - 5} y="8" width="5" height="15" rx="2.5" fill={coat} opacity="0.85" />
-          {kind === "bedak" && <circle cx={24 + r * 0.8 - 2.5} cy="8" r="3.2" fill="#f2ede0" />}
+          {kind === "bezdak" && <circle cx={24 + r * 0.8 - 2.5} cy="8" r="3.2" fill="#f2ede0" />}
         </>
       )}
       <ellipse cx="24" cy="29" rx={r} ry={r * 0.74} fill={coat} />
@@ -408,7 +408,7 @@ function TitleScreen({
             <h2>BESTIÁŘ</h2>
             <ul>
               <li>
-                <Avatar kind="bedak" />
+                <Avatar kind="bezdak" />
                 <div>
                   <b>Bezďák</b>
                   <span>Pomalý, ale je jich hodně. Chce dvacku nebo cígo.</span>
@@ -417,7 +417,7 @@ function TitleScreen({
               <li>
                 <Avatar kind="teplaky" />
                 <div>
-                  <b>Teplákář</b>
+                  <b>Úkáčko</b>
                   <span>Přikrčí se a vystřelí. Uhni do strany. Chce pade.</span>
                 </div>
               </li>
@@ -636,8 +636,8 @@ export default function App() {
     setPhaseState(next);
   }, []);
 
-  const start = useCallback(() => {
-    sfx.unlock();
+  const start = useCallback(async () => {
+    await sfx.preload();
     const game = createGame(touchRef.current);
     beginRun(game);
     gameRef.current = game;

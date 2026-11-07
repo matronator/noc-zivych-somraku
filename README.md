@@ -13,7 +13,7 @@ You have **two minutes** to reach the train. The route takes you through several
 * **Shout “NEMÁM!”** to knock nearby pursuers away.
 * **Throw a 10 Kč coin** as bait to distract enemies.
 * **Collect pickups** such as cash, cigarettes, coffee and headphones to improve your chances.
-* **Survive four enemy types:** the slow but numerous Bezďák, the charging Teplákář, the slowing Smraďoch and the final boss, Velkej Béďa.
+* **Survive four enemy types:** the slow but numerous Bezďák, the charging Úkáčko, the slowing Smraďoch and the final boss, Velkej Béďa.
 
 The game interface and in-game text are currently in Czech.
 
